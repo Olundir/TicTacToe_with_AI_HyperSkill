@@ -1,0 +1,742 @@
+type: edu
+custom_name: stage5
+files:
+- name: src/tictactoe/Main.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Main {
+        public static void main(String[] args) {
+
+        }
+    }
+  learner_created: false
+- name: src/tictactoe/Board.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Board {
+        private final char[][] gameboard = new char[3][3];
+
+        public char[][] getGameboard() {
+            return gameboard;
+        }
+
+        public void boardInit(String input) {
+            int count = 0;
+            char[] in = input.toCharArray();
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    gameboard[i][j] = in[count];
+                    count++;
+                }
+            }
+        }
+
+        public void printBoard() {
+            System.out.println("---------");
+            for (int i = 0; i < 3; i++) {
+                System.out.print("| ");
+                for (int j = 0; j < 3; j++) {
+                    System.out.print(gameboard[i][j] + " ");
+                }
+                System.out.print("|");
+            }
+            System.out.println("---------");
+        }
+    }
+  learner_created: false
+- name: src/tictactoe/Game.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Game extends InputRules {
+        System.out.println();
+    }
+  learner_created: false
+- name: src/tictactoe/Missile.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Missile {
+        private int[] missileCords;
+
+        public int[] getMissileCords() {
+            return missileCords;
+        }
+
+        // convert to the board cords that start with 0
+        public void setMissileCords(int[] missileCords) {
+            this.missileCords = missileCords;
+        }
+    }
+  learner_created: false
+- name: test/TicTacToeTest.java
+  visible: false
+  text: |
+    import org.hyperskill.hstest.dynamic.DynamicTest;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testing.TestedProgram;
+
+    import java.util.List;
+
+
+    public class TicTacToeTest extends StageTest<String> {
+
+        int[] easyAiMoves = new int[9];
+
+        @DynamicTest(order = 0)
+        CheckResult testBadParameters() {
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            String output = program.execute("start");
+            if (!output.toLowerCase().contains("bad parameters")) {
+                return CheckResult.wrong("After entering start command with wrong parameters you should print 'Bad parameters!' and ask to enter a command again!");
+            }
+
+            output = program.execute("start easy");
+            if (!output.toLowerCase().contains("bad parameters")) {
+                return CheckResult.wrong("After entering start command with wrong parameters you should print 'Bad parameters!' and ask to enter a command again!");
+            }
+
+            program.execute("exit");
+
+            if (!program.isFinished()) {
+                return CheckResult.wrong("After entering 'exit' command you should stop the program!");
+            }
+
+            return CheckResult.correct();
+        }
+
+
+        @DynamicTest(order = 1)
+        CheckResult testGridOutput() {
+
+            TestedProgram program = new TestedProgram();
+
+            program.start();
+
+            String output = program.execute("start user easy");
+
+            Grid printedGrid = Grid.fromOutput(output);
+            Grid emptyGrid = Grid.fromLine("_________");
+
+            if (!printedGrid.equals(emptyGrid)) {
+                return CheckResult.wrong("After starting the program you should print an empty grid!\n" +
+                    "Correct empty grid:\n" + emptyGrid);
+            }
+
+            if (!output.toLowerCase().contains("enter the coordinates:")) {
+                return CheckResult.wrong("After printing an empty grid you should ask to enter cell coordinates!");
+            }
+
+            output = program.execute("2 2");
+
+            Grid gridAfterMove = Grid.fromOutput(output);
+            Grid correctGridAfterMove = Grid.fromLine("____X____");
+
+            if (!gridAfterMove.equals(correctGridAfterMove)) {
+                return CheckResult.wrong("After making the move wrong grid was printed.\n" +
+                    "Your grid:\n" + gridAfterMove + "\n" +
+                    "Correct grid:\n" + correctGridAfterMove);
+            }
+
+            if (!output.toLowerCase().replace("'", "\"").contains("making move level \"easy\"")) {
+                return CheckResult.wrong("After entering a cell coordinates you should print:\nMaking move level \"easy\"");
+            }
+
+            Grid gridAfterAiMove = Grid.fromOutput(output, 2);
+
+            if (gridAfterAiMove.equals(gridAfterMove)) {
+                return CheckResult.wrong("After AI move grid wasn't changed!");
+            }
+
+            Grid gameGrid = gridAfterAiMove;
+
+            while (true) {
+                if (gameGrid.getGameState() != GameState.NOT_FINISHED) {
+                    switch (gameGrid.getGameState()) {
+                        case X_WIN:
+                            if (!output.contains("X wins")) {
+                                return CheckResult.wrong("You should print 'X wins' if X win the game");
+                            }
+                            break;
+                        case O_WIN:
+                            if (!output.contains("O wins")) {
+                                return CheckResult.wrong("You should print 'O wins' if O win the game");
+                            }
+                            break;
+                        case DRAW:
+                            if (!output.contains("Draw")) {
+                                return CheckResult.wrong("You should print 'Draw' if the game ends with draw!");
+                            }
+                            break;
+                    }
+                    break;
+                }
+                Position nextMove = Minimax.getMove(gameGrid, CellState.X);
+
+                Grid tempGrid = gameGrid.copy();
+                tempGrid.setCell(nextMove.x, nextMove.y, CellState.X);
+
+                output = program.execute((nextMove.x + 1) + " " + (nextMove.y + 1));
+
+                gameGrid = Grid.fromOutput(output);
+
+                if (!gameGrid.equals(tempGrid)) {
+                    return CheckResult.wrong("After making move (" + nextMove + ") the game grid is wrong!\n" +
+                        "Your gird\n" + gameGrid + "\n" +
+                        "Correct grid\n" + tempGrid);
+                }
+
+                if (gameGrid.getGameState() != GameState.NOT_FINISHED)
+                    continue;
+
+                gameGrid = Grid.fromOutput(output, 2);
+            }
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(repeat = 100, order = 2)
+        CheckResult checkEasyAi() {
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            program.execute("start user easy");
+
+            String output = program.execute("2 2");
+
+            Grid gridAfterAiMove = Grid.fromOutput(output, 2);
+
+            CellState[][] array = gridAfterAiMove.getGrid();
+
+            for (int i = 0; i < 9; i++) {
+                if (i == 4) {
+                    continue;
+                }
+                if (array[i / 3][i % 3] == CellState.O) {
+                    easyAiMoves[i]++;
+                }
+            }
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 3)
+        CheckResult checkRandom() {
+            double averageScore = 0;
+
+            for (int i = 0; i < easyAiMoves.length; i++) {
+                averageScore += (i + 1) * easyAiMoves[i];
+            }
+
+            averageScore /= 8;
+
+            double expectedValue = (double) (1 + 2 + 3 + 4 + 6 + 7 + 8 + 9) * 100 / 8 / 8;
+
+            if (Math.abs(averageScore - expectedValue) > 20) {
+                return CheckResult.wrong("Looks like your Easy level AI doesn't make a random move!");
+            }
+
+            return CheckResult.correct();
+        }
+
+        boolean isEasyNotMovingLikeMedium = false;
+
+        @DynamicTest(repeat = 30, order = 4)
+        CheckResult checkEasyNotMovingLikeMedium() {
+
+            if (isEasyNotMovingLikeMedium) {
+                return CheckResult.correct();
+            }
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+            program.execute("start user easy");
+
+            String output = program.execute("2 2");
+
+            Grid gameGrid = Grid.fromOutput(output, 2);
+
+            CellState[][] cellStates = gameGrid.getGrid();
+
+            if (cellStates[0][0] == CellState.EMPTY && cellStates[2][2] == CellState.EMPTY) {
+                output = program.execute("1 1");
+                gameGrid = Grid.fromOutput(output, 2);
+                if (gameGrid.getGrid()[2][2] == CellState.EMPTY) {
+                    isEasyNotMovingLikeMedium = true;
+                }
+            } else {
+                output = program.execute("1 3");
+                gameGrid = Grid.fromOutput(output, 2);
+                if (gameGrid.getGrid()[2][0] == CellState.EMPTY) {
+                    isEasyNotMovingLikeMedium = true;
+                }
+            }
+
+            program.stop();
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 5)
+        CheckResult checkEasyNotMovingLikeMediumAfter() {
+            if (!isEasyNotMovingLikeMedium) {
+                return CheckResult.wrong("Looks like your Easy level AI doesn't make a random move!");
+            }
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 6)
+        CheckResult checkEasyVsEasy() {
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            String output = program.execute("start easy easy");
+
+            List<Grid> gridList = Grid.allGridsFromOutput(output);
+
+            Grid.checkGridSequence(gridList);
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(repeat = 10, order = 7)
+        CheckResult checkMediumAi() {
+            TestedProgram program = new TestedProgram();
+            program.start();
+            program.execute("start user medium");
+
+            String output = program.execute("2 2");
+
+            Grid gameGrid = Grid.fromOutput(output, 2);
+
+            CellState[][] cellStates = gameGrid.getGrid();
+
+            if (cellStates[0][0] == CellState.EMPTY && cellStates[2][2] == CellState.EMPTY) {
+                output = program.execute("1 1");
+                gameGrid = Grid.fromOutput(output, 2);
+                if (gameGrid.getGrid()[2][2] == CellState.EMPTY) {
+                    return CheckResult.wrong("Looks like your Medium level AI doesn't make a correct move!");
+                }
+            } else {
+                output = program.execute("1 3");
+                gameGrid = Grid.fromOutput(output, 2);
+                if (gameGrid.getGrid()[2][0] == CellState.EMPTY) {
+                    return CheckResult.wrong("Looks like your Medium level AI doesn't make a correct move!");
+                }
+            }
+            program.stop();
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 8, repeat = 5)
+        CheckResult checkMediumVsMedium() {
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            String output = program.execute("start medium medium");
+
+            List<Grid> gridList = Grid.allGridsFromOutput(output);
+
+            Grid.checkGridSequence(gridList);
+
+            return CheckResult.correct();
+        }
+
+        boolean isMediumNotMovingLikeHard = false;
+
+        @DynamicTest(repeat = 30, order = 9)
+        CheckResult checkMediumNotMovingLikeHard() {
+
+            if (isMediumNotMovingLikeHard) {
+                return CheckResult.correct();
+            }
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            program.execute("start user medium");
+
+            String output = program.execute("2 2");
+
+            Grid userMoveGrid = Grid.fromOutput(output, 1);
+            Grid mediumMoveGrid = Grid.fromOutput(output, 2);
+
+            Position mediumMove = Grid.getMove(userMoveGrid, mediumMoveGrid);
+
+            List<Position> minimaxCorrectPositions = Minimax.getAvailablePositions(userMoveGrid, CellState.O);
+
+            if (!minimaxCorrectPositions.contains(mediumMove)) {
+                isMediumNotMovingLikeHard = true;
+            }
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 10)
+        CheckResult checkMediumNotMovingLikeHardAfter() {
+            if (!isMediumNotMovingLikeHard) {
+                return CheckResult.wrong("Looks like Medium level AI doesn't make a random move!");
+            }
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 11)
+        CheckResult checkHardAi() {
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            String output = program.execute("start user hard");
+            Grid grid = Grid.fromOutput(output);
+            Position nextMove = Minimax.getMove(grid, CellState.X);
+            output = program.execute((nextMove.x + 1) + " " + (nextMove.y + 1));
+
+            while (!output.toLowerCase().contains("win") && !output.toLowerCase().contains("draw")) {
+                Grid gridAfterUserMove = Grid.fromOutput(output);
+                Grid gridAfterAiMove = Grid.fromOutput(output, 2);
+                Position aiMove = Grid.getMove(gridAfterUserMove, gridAfterAiMove);
+
+                List<Position> correctMinimaxMovePositions = Minimax.getAvailablePositions(gridAfterUserMove, CellState.O);
+                if (!correctMinimaxMovePositions.contains(aiMove)) {
+                    return CheckResult.wrong("Your minimax algorithm is wrong! It chooses wrong positions to make a move!");
+                }
+
+                nextMove = Minimax.getMove(gridAfterAiMove, CellState.X);
+
+                output = program.execute((nextMove.x + 1) + " " + (nextMove.y + 1));
+            }
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(repeat = 5, order = 12)
+        CheckResult checkHardVsHard() {
+
+            TestedProgram program = new TestedProgram();
+            program.start();
+
+            String output = program.execute("start hard hard");
+
+            if (!output.toLowerCase().contains("draw")) {
+                return CheckResult.wrong("The result of the game between minimax algorithms should be always 'Draw'!\n" +
+                    "Make sure your output contains 'Draw'.");
+            }
+
+            return CheckResult.correct();
+        }
+    }
+  learner_created: false
+- name: src/tictactoe/GameState.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public enum GameState {
+        GAME_NOT_FINISHED, DRAW, XWINS, OWINS, QUIT;
+
+
+        public static GameState getState(char state) {
+            if (state == 'X') return XWINS;
+            if (state == 'O') return OWINS;
+            else return GAME_NOT_FINISHED;
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/DiffLevel.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public enum DiffLevel {
+        EASY, MEDIUM, HARD;
+    }
+  learner_created: true
+- name: src/tictactoe/AI.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    import java.util.Random;
+
+    public class AI {
+
+        public static void determineAI(Board board, char turn, String ai, Missile missile) {
+            switch (ai) {
+                case "easy":
+                    generateEasyMove(board, turn, missile);
+                    break;
+                case "medium":
+                    generateMediumMove(board, turn, missile);
+                    break;
+                case "hard":
+                    break;
+            }
+        }
+
+        private static boolean checkIfOpponentCanWin(Board board, char turn, Missile missile) {
+            Board checkBoard = new Board();
+            checkBoard.setBoard(board);
+
+            char determineTurn;
+
+            if (turn == 'X') {
+                determineTurn = 'O';
+            } else {
+                determineTurn = 'X';
+            }
+
+            while(true) {
+                int[] cordsNext = checkBoard.getNextFreeSpot();
+                checkBoard.placeMissile(cordsNext, turn);
+                if (GameRules.checkGameState(checkBoard) == GameState.XWINS ||
+                        GameRules.checkGameState(checkBoard) ==  GameState.OWINS) {
+                    board.placeMissile(cordsNext, determineTurn);
+                    missile.setLastMissileCords(cordsNext);
+                    return true;
+                } else {
+                    checkBoard.placeFakeMissile(cordsNext);
+                }
+                if (checkBoard.checkIfContinue()) break;
+            }
+            return false;
+        }
+
+
+        private static boolean checkIfCanWin(Board board, char turn, Missile missile) {
+            Board checkBoard = new Board();
+            checkBoard.setBoard(board);
+
+            while(true) {
+                int[] cordsNext = checkBoard.getNextFreeSpot();
+                checkBoard.placeMissile(cordsNext, turn);
+                if (GameRules.checkGameState(checkBoard) == GameState.XWINS ||
+                        GameRules.checkGameState(checkBoard) ==  GameState.OWINS) {
+                    board.placeMissile(cordsNext, turn);
+                    missile.setLastMissileCords(cordsNext);
+                    return true;
+                } else {
+                    checkBoard.placeFakeMissile(cordsNext);
+                }
+                if (checkBoard.checkIfContinue()) break;
+            }
+            return false;
+        }
+
+        public static void generateMediumMove(Board board, char turn, Missile missile) {
+            System.out.println("Making move level \"medium\"");
+            Random random = new Random();
+            char determineTurn;
+
+            if (turn == 'X') {
+                determineTurn = 'O';
+            } else {
+                determineTurn = 'X';
+            }
+            if (checkIfCanWin(board, turn, missile)) return;
+
+            if (checkIfOpponentCanWin(board, determineTurn, missile)) {
+                return;
+            };
+
+            while (true) {
+                int[] pos = convertToCords(random.nextInt(9 - 1 + 1) + 1);
+                if (board.getGameboard()[pos[0]][pos[1]] == ' '){
+                    board.placeMissile(pos, turn);
+                    missile.setLastMissileCords(pos);
+                    break;
+                }
+            }
+        }
+
+
+
+        public static void generateEasyMove(Board board, char turn, Missile missile) {
+            System.out.println("Making move level \"easy\"");
+
+            Random random = new Random();
+
+            while (true) {
+                int[] pos = convertToCords(random.nextInt(9 - 1 + 1) + 1);
+                if (board.getGameboard()[pos[0]][pos[1]] == ' '){
+                    board.placeMissile(pos, turn);
+                    missile.setLastMissileCords(pos);
+                    break;
+                }
+            }
+
+        }
+
+        private static int[] convertToCords(int position) {
+            switch (position) {
+                case 1:
+                    return new int[]{1, 0};
+                case 2:
+                    return new int[]{0, 1};
+                case 3:
+                    return new int[]{2, 1};
+                case 4:
+                    return new int[]{1, 1};
+                case 5:
+                    return new int[]{0, 0};
+                case 6:
+                    return new int[]{1, 2};
+                case 7:
+                    return new int[]{2, 0};
+                case 8:
+                    return new int[]{0, 2};
+                case 9:
+                    return new int[]{2, 2};
+            }
+            return new int[]{0, 0};
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/GameRules.java
+  visible: true
+  text: |
+    package tictactoe;
+
+
+    public class GameRules {
+
+        public static void checkInputRules(Board board, int[] missileCords, String input) throws Exception {
+
+            if (input.matches("\\D+")) {
+                throw new Exception("You should enter numbers!\n");
+            } else if(missileCords[0] > 2 || missileCords[1] > 2) {
+                throw new Exception("Coordinates should be from 1 to 3!\n");
+            } else if (board.getGameboard()[missileCords[0]][missileCords[1]] == 'O' ||
+                    board.getGameboard()[missileCords[0]][missileCords[1]] == 'X') {
+                throw new Exception("This cell is occupied! Choose another one!");
+            }
+        }
+
+        public static GameState checkGameState(Board board) {
+            char[][] gameboard = board.getGameboard();
+
+            char[] state = {'X', 'O'};
+            for (int k = 0; k < 2; k++) {
+                // check column
+                for(int j = 0; j < 3; j++){
+                    int count = 0;
+                    for (int i = 0; i < 3; i++) {
+                        if (gameboard[i][j] == state[k]) count++;
+                        if (count == 3) return GameState.getState(state[k]);
+
+                    }
+                }
+                // check row
+                for(int j = 0; j < 3; j++){
+                    int count = 0;
+                    for (int i = 0; i < 3; i++) {
+                        if (gameboard[j][i] == state[k]) count++;
+                        if (count == 3) return GameState.getState(state[k]);
+                    }
+                }
+                // check diagonal
+                int countDiagonal = 0;
+                for(int j = 0; j < 3; j++){
+                    if (gameboard[j][j] == state[k]) countDiagonal++;
+                    if (countDiagonal == 3) return GameState.getState(state[k]);
+                }
+                // check counter diagonal
+                int countCounterDiagonal = 0;
+                int c = 2;
+                for(int j = 0; j < 3; j++){
+                    if (gameboard[j][c] == state[k]) countCounterDiagonal++;
+                    if (countCounterDiagonal == 3) return GameState.getState(state[k]);
+                    c--;
+                }
+            }
+
+            int counter = 0;
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (gameboard[i][j] != ' ') counter++;
+                }
+            }
+            if (counter == 9) {
+                return GameState.DRAW;
+            };
+
+            return GameState.GAME_NOT_FINISHED;
+        }
+
+        public static void checkStartingInput(String[] input) throws Exception{
+            if (input.length != 3) throw new Exception("Bad parameters!\n");
+            if (!input[0].equals("start")) throw new Exception("Bad parameters!\n");
+            if (!(input[1].equals("hard") ||
+                    input[1].equals("medium") ||
+                    input[1].equals("easy") ||
+                    input[1].equals("user"))) throw new Exception("Bad " +
+                    "parameters!\n");
+            if (!(input[2].equals("hard") ||
+                    input[2].equals("medium") ||
+                    input[2].equals("easy") ||
+                    input[2].equals("user"))) throw new Exception("Bad " +
+                    "parameters!\n");
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/Menu.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    import java.util.Scanner;
+
+    public class Menu{
+        static Scanner scanner = new Scanner(System.in);
+
+        private static String P1 = "";
+        private static String P2 = "";
+
+        public static void setP1(String in) {
+            P1 = in;
+        }
+        public static void setP2(String in) {
+            P2 = in;
+        }
+
+        public static String getP1() {
+            return P1;
+        }
+
+        public static String getP2() {
+            return P2;
+        }
+
+        public static String[] getStartingInput() {
+            while (true) {
+                try {
+                    System.out.print("Input command: ");
+                    String[] input = scanner.nextLine().split(" ");
+                    if (input[0].equals("exit")) System.exit(0);
+                    GameRules.checkStartingInput(input);
+                    return new String[]{input[1], input[2]};
+                } catch (Exception e) {
+                    System.out.print(e.getMessage());
+                }
+            }
+        }
+    }
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/7438#comment
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">JetBrains
+    Academy</a> to continue learning.
+  time: Mon, 21 Mar 2022 12:48:44 UTC
+record: 5
